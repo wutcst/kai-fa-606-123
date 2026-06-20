@@ -5,6 +5,7 @@ import {
   createPlayerStats,
   getAutoFireShots,
   getBossPhase,
+  getDifficultyConfig,
   updateCombo,
 } from './rules.js';
 
@@ -20,11 +21,14 @@ const LIMITS = {
   impactPulses: 8,
 };
 
-export function createGame(width, height) {
+export function createGame(width, height, options = {}) {
+  const difficultyConfig = getDifficultyConfig(options.difficulty);
   const playerStats = createPlayerStats();
   return {
     width,
     height,
+    difficulty: difficultyConfig.id,
+    difficultyConfig,
     time: 0,
     score: 0,
     kills: 0,
@@ -63,7 +67,7 @@ export function resizeGame(state, width, height) {
   const oldHeight = state.height || height;
   state.width = width;
   state.height = height;
-  state.player.x = clamp((state.player.x / oldWidth) * width, 52, width * 0.62);
+  state.player.x = clamp((state.player.x / oldWidth) * width, 52, width - state.player.r);
   state.player.y = clamp((state.player.y / oldHeight) * height, 68, height - 54);
   state.stars = createStars(width, height);
 }
@@ -143,7 +147,7 @@ function movePlayer(state, input, dt) {
   let dy = Number(Boolean(input.down)) - Number(Boolean(input.up));
 
   if (input.pointerActive) {
-    const targetX = clamp(input.pointerX, 44, state.width * 0.64);
+    const targetX = clamp(input.pointerX, player.r, state.width - player.r);
     const targetY = clamp(input.pointerY, 62, state.height - 42);
     const tx = targetX - player.x;
     const ty = targetY - player.y;
@@ -157,7 +161,7 @@ function movePlayer(state, input, dt) {
   const length = Math.hypot(dx, dy) || 1;
   player.x += (dx / length) * player.stats.speed * dt;
   player.y += (dy / length) * player.stats.speed * dt;
-  player.x = clamp(player.x, 46, state.width * 0.64);
+  player.x = clamp(player.x, player.r, state.width - player.r);
   player.y = clamp(player.y, 62, state.height - 42);
 }
 
@@ -288,6 +292,7 @@ function spawnEnemies(state, dt) {
   const phase = getBossPhase(state.time);
   const bossAlive = state.enemies.some((enemy) => enemy.kind === 'boss');
   if (phase && phase.cycle > state.bossCycle && !bossAlive) {
+    const bossHp = Math.round(phase.hp * state.difficultyConfig.bossHp);
     state.bossCycle = phase.cycle;
     state.enemies.push({
       id: crypto.randomUUID(),
@@ -298,10 +303,10 @@ function spawnEnemies(state, dt) {
       x: state.width + 120,
       y: state.height * 0.5,
       r: phase.radius,
-      hp: phase.hp,
-      maxHp: phase.hp,
-      score: phase.score,
-      speed: -54,
+      hp: bossHp,
+      maxHp: bossHp,
+      score: Math.round(phase.score * state.difficultyConfig.score),
+      speed: -54 * state.difficultyConfig.enemySpeed,
       fireTimer: 0.3,
       attackStep: 0,
       moveSeed: Math.random() * TAU,
@@ -332,8 +337,12 @@ function spawnEnemies(state, dt) {
 
     enemy.fireTimer = 0.6 + Math.random() * 1.4;
     enemy.moveSeed = Math.random() * TAU;
+    enemy.hp = Math.max(1, Math.round(enemy.hp * state.difficultyConfig.enemyHp));
+    enemy.maxHp = enemy.hp;
+    enemy.score = Math.round(enemy.score * state.difficultyConfig.score);
+    enemy.speed *= state.difficultyConfig.enemySpeed;
     state.enemies.push(enemy);
-    state.spawnTimer += Math.max(0.18, 0.74 - pressure * 0.38 - state.kills * 0.0009);
+    state.spawnTimer += Math.max(0.18, 0.74 - pressure * 0.38 - state.kills * 0.0009) * state.difficultyConfig.spawn;
   }
 }
 
@@ -360,7 +369,7 @@ function updateEnemies(state, dt) {
       enemy.y = getBossY(state, enemy);
       enemy.fireTimer -= dt;
       if (enemy.fireTimer <= 0) {
-        enemy.fireTimer += getBossFireInterval(state, enemy);
+        enemy.fireTimer += getBossFireInterval(state, enemy) * state.difficultyConfig.enemyFire;
         fireBossPattern(state, enemy);
       }
       continue;
@@ -376,7 +385,7 @@ function updateEnemies(state, dt) {
     if (enemy.kind === 'striker' || enemy.kind === 'gunship') {
       enemy.fireTimer -= dt;
       if (enemy.fireTimer <= 0 && enemy.x < state.width - 40) {
-        enemy.fireTimer += enemy.kind === 'gunship' ? 1.08 : 1.46;
+        enemy.fireTimer += (enemy.kind === 'gunship' ? 1.08 : 1.46) * state.difficultyConfig.enemyFire;
         fireAtPlayer(state, enemy, enemy.kind === 'gunship' ? 2 : 1);
       }
     }
@@ -731,7 +740,7 @@ function dropLoot(state, enemy) {
 }
 
 function damagePlayer(state, amount) {
-  state.player.stats.hp = Math.max(0, state.player.stats.hp - amount);
+  state.player.stats.hp = Math.max(0, state.player.stats.hp - amount * state.difficultyConfig.damage);
   state.player.invulnerable = 0.85;
   state.combo = 0;
   state.comboTimer = 0;

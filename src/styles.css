@@ -60,7 +60,7 @@ button {
   right: 16px;
   z-index: 2;
   display: grid;
-  grid-template-columns: minmax(140px, 1fr) auto minmax(180px, 0.85fr);
+  grid-template-columns: minmax(140px, 1fr) auto minmax(180px, 0.72fr) minmax(176px, 0.56fr);
   gap: 14px;
   align-items: start;
   pointer-events: none;
@@ -68,7 +68,8 @@ button {
 
 .brand,
 .hud-metrics,
-.bars {
+.bars,
+.records {
   border: 1px solid var(--line);
   background: linear-gradient(180deg, rgba(10, 18, 35, 0.72), rgba(5, 9, 18, 0.42));
   box-shadow: 0 0 34px rgba(77, 248, 255, 0.12);
@@ -115,7 +116,8 @@ button {
 }
 
 .hud-metrics span,
-.bars span {
+.bars span,
+.record-line span {
   display: block;
   color: var(--muted);
   font-size: 10px;
@@ -123,7 +125,8 @@ button {
   letter-spacing: 0.12em;
 }
 
-.hud-metrics strong {
+.hud-metrics strong,
+.record-line strong {
   display: block;
   margin-top: 2px;
   font-size: clamp(17px, 2vw, 28px);
@@ -131,9 +134,56 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
+.record-line strong {
+  margin-top: 0;
+  font-size: 16px;
+  white-space: nowrap;
+}
+
 .bars {
   padding: 9px 12px;
   border-radius: 6px;
+}
+
+.records {
+  display: grid;
+  gap: 7px;
+  padding: 8px;
+  border-radius: 6px;
+  pointer-events: auto;
+}
+
+.difficulty-toggle {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+}
+
+.difficulty-toggle button {
+  min-width: 0;
+  min-height: 28px;
+  border: 1px solid rgba(141, 234, 255, 0.22);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.difficulty-toggle button[aria-pressed="true"] {
+  border-color: rgba(255, 209, 102, 0.85);
+  color: #071018;
+  background: linear-gradient(135deg, var(--gold), var(--pink));
+  box-shadow: 0 0 18px rgba(255, 209, 102, 0.26);
+}
+
+.record-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .bars label {
@@ -255,5 +305,9 @@ button {
 
   .bars {
     width: min(320px, 100%);
+  }
+
+  .records {
+    width: min(360px, 100%);
   }
 }

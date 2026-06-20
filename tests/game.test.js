@@ -26,6 +26,36 @@ test('boss joins the fight on the timed arcade cadence', () => {
   assert.ok(game.enemies.some((enemy) => enemy.kind === 'boss'));
 });
 
+test('hard difficulty scales boss health and reward above normal', () => {
+  const normal = createGame(1280, 720, { difficulty: 'normal' });
+  const hard = createGame(1280, 720, { difficulty: 'hard' });
+  normal.player.stats.hp = 100000;
+  hard.player.stats.hp = 100000;
+  normal.time = 29.99;
+  hard.time = 29.99;
+  normal.spawnTimer = 999;
+  hard.spawnTimer = 999;
+
+  updateGame(normal, {}, 1 / 60);
+  updateGame(hard, {}, 1 / 60);
+
+  const normalBoss = normal.enemies.find((enemy) => enemy.kind === 'boss');
+  const hardBoss = hard.enemies.find((enemy) => enemy.kind === 'boss');
+  assert.ok(hardBoss.hp > normalBoss.hp);
+  assert.ok(hardBoss.score > normalBoss.score);
+});
+
+test('player can cross the old right-side air wall', () => {
+  const game = createGame(1280, 720);
+  game.spawnTimer = 999;
+  game.player.x = 1270;
+
+  updateGame(game, { right: true }, 1 / 60);
+
+  assert.ok(game.player.x > 1280 * 0.64);
+  assert.ok(game.player.x <= 1280 - game.player.r);
+});
+
 test('bomb consumes charge, clears hostile bullets, and damages enemies', () => {
   const game = createGame(1280, 720);
   game.player.stats.bombCharge = 1;

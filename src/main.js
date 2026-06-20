@@ -1,6 +1,7 @@
 import { createBeatAudio } from './game/audio.js';
 import { createGame, resizeGame, triggerBomb, updateGame } from './game/game.js';
 import { renderGame } from './game/render.js';
+import { loadSaveData, saveDifficulty, saveRunRecord } from './game/storage.js';
 
 const canvas = document.querySelector('#game');
 const ctx = canvas.getContext('2d');
@@ -14,10 +15,15 @@ const statusPanel = document.querySelector('#statusPanel');
 const statusTitle = document.querySelector('#statusTitle');
 const statusText = document.querySelector('#statusText');
 const restartButton = document.querySelector('#restartButton');
+const difficultyButtons = [...document.querySelectorAll('[data-difficulty]')];
+const bestRecordEl = document.querySelector('#bestRecord');
 
-let game = createGame(1280, 720);
+let saveData = loadSaveData();
+let currentDifficulty = saveData.difficulty;
+let game = createGame(1280, 720, { difficulty: currentDifficulty });
 let last = performance.now();
 let paused = false;
+let recordedGameOver = false;
 const audio = createBeatAudio({ bpm: 174 });
 const hudCache = {
   score: '',
@@ -27,6 +33,8 @@ const hudCache = {
   bomb: '',
   disabled: null,
   panel: '',
+  record: '',
+  difficulty: '',
 };
 const input = {
   up: false,
@@ -51,8 +59,10 @@ function resize() {
 }
 
 function restart() {
-  game = createGame(window.innerWidth, window.innerHeight);
+  game = createGame(window.innerWidth, window.innerHeight, { difficulty: currentDifficulty });
   paused = false;
+  recordedGameOver = false;
+  hudCache.panel = '';
   statusPanel.hidden = true;
   last = performance.now();
 }
@@ -69,6 +79,7 @@ function loop(now) {
 }
 
 function syncHud() {
+  syncDifficultyHud();
   const score = Math.floor(game.score).toLocaleString('en-US');
   const combo = game.combo > 0 ? `x${game.combo}` : '0';
   const kills = String(game.kills);
@@ -109,6 +120,15 @@ function syncHud() {
     statusText.textContent = `SCORE ${Math.floor(game.score).toLocaleString('en-US')}`;
     statusPanel.hidden = false;
   } else if (game.mode === 'gameover') {
+    if (!recordedGameOver) {
+      saveData = saveRunRecord(window.localStorage, {
+        difficulty: currentDifficulty,
+        score: game.score,
+        kills: game.kills,
+      });
+      recordedGameOver = true;
+      hudCache.record = '';
+    }
     if (hudCache.panel !== 'gameover') {
       hudCache.panel = 'gameover';
       statusTitle.textContent = 'GAME OVER';
@@ -120,6 +140,23 @@ function syncHud() {
       hudCache.panel = 'playing';
       statusPanel.hidden = true;
     }
+  }
+}
+
+function syncDifficultyHud() {
+  if (hudCache.difficulty !== currentDifficulty) {
+    hudCache.difficulty = currentDifficulty;
+    for (const button of difficultyButtons) {
+      button.setAttribute('aria-pressed', String(button.dataset.difficulty === currentDifficulty));
+    }
+  }
+
+  const record = saveData.records[currentDifficulty] || saveData.records.normal;
+  const bestScore = Math.floor(record.bestScore).toLocaleString('en-US');
+  const best = `${bestScore} / ${record.bestKills}`;
+  if (hudCache.record !== best) {
+    hudCache.record = best;
+    bestRecordEl.textContent = best;
   }
 }
 
@@ -170,5 +207,18 @@ restartButton.addEventListener('click', () => {
   restart();
 });
 
+for (const button of difficultyButtons) {
+  button.addEventListener('click', () => {
+    audio.unlock();
+    const nextDifficulty = button.dataset.difficulty;
+    if (nextDifficulty === currentDifficulty) return;
+
+    saveData = saveDifficulty(window.localStorage, nextDifficulty);
+    currentDifficulty = saveData.difficulty;
+    restart();
+  });
+}
+
 resize();
+syncDifficultyHud();
 requestAnimationFrame(loop);

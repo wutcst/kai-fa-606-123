@@ -39,6 +39,17 @@
             <i><b id="bombBar"></b></i>
           </label>
         </div>
+        <div class="records">
+          <div class="difficulty-toggle" aria-label="Difficulty">
+            <button type="button" data-difficulty="easy" aria-pressed="false">EASY</button>
+            <button type="button" data-difficulty="normal" aria-pressed="true">NORMAL</button>
+            <button type="button" data-difficulty="hard" aria-pressed="false">HARD</button>
+          </div>
+          <div class="record-line">
+            <span>BEST</span>
+            <strong id="bestRecord">0 / 0</strong>
+          </div>
+        </div>
       </section>
       <section class="status" id="statusPanel" hidden>
         <h1 id="statusTitle"></h1>

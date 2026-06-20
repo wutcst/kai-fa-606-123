@@ -67,6 +67,46 @@ export function activateSpecialWeapon(player, kind) {
   return player;
 }
 
+const DIFFICULTY_CONFIGS = {
+  easy: {
+    id: 'easy',
+    label: 'EASY',
+    enemySpeed: 0.82,
+    enemyHp: 0.85,
+    enemyFire: 1.22,
+    bossHp: 0.78,
+    spawn: 1.2,
+    damage: 0.76,
+    score: 0.9,
+  },
+  normal: {
+    id: 'normal',
+    label: 'NORMAL',
+    enemySpeed: 1,
+    enemyHp: 1,
+    enemyFire: 1,
+    bossHp: 1,
+    spawn: 1,
+    damage: 1,
+    score: 1,
+  },
+  hard: {
+    id: 'hard',
+    label: 'HARD',
+    enemySpeed: 1.18,
+    enemyHp: 1.16,
+    enemyFire: 0.82,
+    bossHp: 1.3,
+    spawn: 0.82,
+    damage: 1.16,
+    score: 1.25,
+  },
+};
+
+export function getDifficultyConfig(id) {
+  return DIFFICULTY_CONFIGS[id] || DIFFICULTY_CONFIGS.normal;
+}
+
 const BOSS_TIERS = [
   {
     tier: 'warden',

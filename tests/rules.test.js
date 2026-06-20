@@ -8,6 +8,7 @@ import {
   createPlayerStats,
   getAutoFireShots,
   getBossPhase,
+  getDifficultyConfig,
   getPlayerLevel,
   updateCombo,
 } from '../src/game/rules.js';
@@ -80,6 +81,14 @@ test('special weapon pickups activate one timed attack mode', () => {
 
   assert.equal(player.weaponMode, 'missile');
   assert.equal(player.weaponTimer, 10);
+});
+
+test('difficulty configs scale arcade pressure and rewards', () => {
+  assert.equal(getDifficultyConfig('unknown').id, 'normal');
+  assert.equal(getDifficultyConfig('easy').enemySpeed < getDifficultyConfig('normal').enemySpeed, true);
+  assert.equal(getDifficultyConfig('hard').enemySpeed > getDifficultyConfig('normal').enemySpeed, true);
+  assert.equal(getDifficultyConfig('easy').bossHp < getDifficultyConfig('normal').bossHp, true);
+  assert.equal(getDifficultyConfig('hard').score > getDifficultyConfig('normal').score, true);
 });
 
 test('boss phase appears on cadence with escalating boss tiers', () => {
