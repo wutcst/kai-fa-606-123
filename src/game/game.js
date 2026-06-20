@@ -46,6 +46,7 @@ export function createGame(width, height) {
     drops: [],
     particles: [],
     shockwaves: [],
+    audioEvents: [],
     stars: createStars(width, height),
   };
 }
@@ -91,6 +92,7 @@ export function triggerBomb(state) {
   state.flash = 1;
   state.shake = 18;
   state.enemyBullets.length = 0;
+  emitAudio(state, 'bomb', 1);
   addShockwave(state, state.player.x + 82, state.player.y, '#fff7b0', Math.min(state.width, state.height) * 0.46, 8, 0.72);
   addShockwave(state, state.player.x + 82, state.player.y, '#ff4fd8', Math.min(state.width, state.height) * 0.34, 5, 0.5);
   burst(state, state.player.x + 80, state.player.y, '#fff7b0', 64, 9);
@@ -212,18 +214,23 @@ function spawnEnemies(state, dt) {
     state.enemies.push({
       id: crypto.randomUUID(),
       kind: 'boss',
+      tier: phase.tier,
+      name: phase.name,
+      pattern: phase.pattern,
       x: state.width + 120,
       y: state.height * 0.5,
-      r: 84,
+      r: phase.radius,
       hp: phase.hp,
       maxHp: phase.hp,
       score: phase.score,
       speed: -54,
       fireTimer: 0.3,
+      attackStep: 0,
       moveSeed: Math.random() * TAU,
     });
-    state.message = { text: 'WARNING', timer: 1.4 };
+    state.message = { text: phase.name.toUpperCase(), timer: 1.4 };
     state.shake = 10;
+    emitAudio(state, 'boss', phase.cycle);
   }
 
   state.spawnTimer -= dt;
@@ -272,10 +279,10 @@ function updateEnemies(state, dt) {
   for (const enemy of state.enemies) {
     if (enemy.kind === 'boss') {
       enemy.x = Math.max(state.width - 155, enemy.x + enemy.speed * dt);
-      enemy.y = state.height * 0.5 + Math.sin(state.time * 1.6 + enemy.moveSeed) * state.height * 0.24;
+      enemy.y = getBossY(state, enemy);
       enemy.fireTimer -= dt;
       if (enemy.fireTimer <= 0) {
-        enemy.fireTimer += Math.max(0.22, 0.62 - state.bossCycle * 0.035);
+        enemy.fireTimer += getBossFireInterval(state, enemy);
         fireBossPattern(state, enemy);
       }
       continue;
@@ -318,34 +325,80 @@ function fireAtPlayer(state, enemy, count) {
 }
 
 function fireBossPattern(state, boss) {
+  boss.attackStep += 1;
   const base = Math.atan2(state.player.y - boss.y, state.player.x - boss.x);
-  for (let i = -2; i <= 2; i++) {
-    const angle = base + i * 0.16;
-    state.enemyBullets.push({
-      x: boss.x - 64,
-      y: boss.y + i * 18,
-      vx: Math.cos(angle) * 310,
-      vy: Math.sin(angle) * 310,
-      r: 7.5,
-      damage: 12,
-      color: i === 0 ? '#ffd166' : '#ff4fd8',
-    });
+
+  if (boss.pattern === 'fan') {
+    for (let i = -2; i <= 2; i++) {
+      const angle = base + i * 0.16;
+      pushEnemyBullet(state, boss.x - 64, boss.y + i * 18, angle, 310, i === 0 ? '#ffd166' : '#ff4fd8', 7.5, 12);
+    }
+    return;
   }
 
-  if (Math.random() > 0.55) {
-    for (let i = 0; i < 10; i++) {
-      const angle = -Math.PI + i * 0.2 - 0.9;
-      state.enemyBullets.push({
-        x: boss.x - 34,
-        y: boss.y,
-        vx: Math.cos(angle) * 210,
-        vy: Math.sin(angle) * 210,
-        r: 5.6,
-        damage: 8,
-        color: '#ff3d5a',
-      });
+  if (boss.pattern === 'crossfire') {
+    for (let i = -3; i <= 3; i++) {
+      const angle = base + i * 0.11;
+      pushEnemyBullet(state, boss.x - 70, boss.y + i * 10, angle, 340, i % 2 === 0 ? '#ffd166' : '#ff4fd8', 6.8, 11);
     }
+    for (const direction of [-1, 1]) {
+      pushEnemyBullet(state, boss.x - 24, boss.y, Math.PI + direction * 0.85, 245, '#4df8ff', 5.4, 8);
+    }
+    return;
   }
+
+  if (boss.pattern === 'spiral') {
+    const spin = boss.attackStep * 0.42;
+    for (let i = 0; i < 8; i++) {
+      const angle = Math.PI + spin + i * (TAU / 8);
+      pushEnemyBullet(state, boss.x - 42, boss.y, angle, 235, i % 2 ? '#ff4fd8' : '#4df8ff', 5.8, 9);
+    }
+    for (let i = -1; i <= 1; i++) {
+      pushEnemyBullet(state, boss.x - 72, boss.y + i * 20, base + i * 0.12, 330, '#ffd166', 7.2, 12);
+    }
+    return;
+  }
+
+  for (let i = -3; i <= 3; i++) {
+    const angle = base + i * 0.16;
+    pushEnemyBullet(state, boss.x - 76, boss.y + i * 14, angle, 360, i === 0 ? '#ffd166' : '#ff4fd8', 7.4, 12);
+  }
+  for (let i = 0; i < 12; i++) {
+    const angle = -Math.PI - 0.9 + i * 0.16 + boss.attackStep * 0.08;
+    pushEnemyBullet(state, boss.x - 34, boss.y, angle, 235, i % 3 === 0 ? '#ffd166' : '#ff3d5a', 5.8, 9);
+  }
+}
+
+function getBossY(state, boss) {
+  if (boss.pattern === 'crossfire') {
+    return state.height * 0.5 + Math.sin(state.time * 2.4 + boss.moveSeed) * state.height * 0.29;
+  }
+  if (boss.pattern === 'spiral') {
+    return state.height * 0.5 + Math.sin(state.time * 1.5 + boss.moveSeed) * state.height * 0.22 + Math.sin(state.time * 4.2) * 24;
+  }
+  if (boss.pattern === 'storm') {
+    return state.height * 0.5 + Math.sin(state.time * 2.1 + boss.moveSeed) * state.height * 0.31;
+  }
+  return state.height * 0.5 + Math.sin(state.time * 1.6 + boss.moveSeed) * state.height * 0.24;
+}
+
+function getBossFireInterval(state, boss) {
+  if (boss.pattern === 'storm') return Math.max(0.18, 0.46 - state.bossCycle * 0.018);
+  if (boss.pattern === 'spiral') return Math.max(0.2, 0.5 - state.bossCycle * 0.02);
+  if (boss.pattern === 'crossfire') return Math.max(0.22, 0.56 - state.bossCycle * 0.024);
+  return Math.max(0.24, 0.64 - state.bossCycle * 0.028);
+}
+
+function pushEnemyBullet(state, x, y, angle, speed, color, r, damage) {
+  state.enemyBullets.push({
+    x,
+    y,
+    vx: Math.cos(angle) * speed,
+    vy: Math.sin(angle) * speed,
+    r,
+    damage,
+    color,
+  });
 }
 
 function updateBullets(state, dt) {
@@ -442,6 +495,7 @@ function handleCollisions(state) {
     if (drop.kind === 'power') collectPowerDrop(state.player.stats, drop.value);
     if (drop.kind === 'heal') state.player.stats.hp = Math.min(state.player.stats.maxHp, state.player.stats.hp + 18);
     if (drop.kind === 'charge') state.player.stats.bombCharge = Math.min(1, state.player.stats.bombCharge + 0.28);
+    emitAudio(state, drop.kind, 0.6);
     state.score += 80 * Math.max(1, state.combo);
     state.drops.splice(i, 1);
     burst(state, drop.x, drop.y, drop.color, 12, 4);
@@ -466,6 +520,7 @@ function killEnemy(state, index) {
   state.kills += 1;
   state.shake = Math.max(state.shake, enemy.kind === 'boss' ? 20 : 6);
   state.flash = Math.max(state.flash, enemy.kind === 'boss' ? 1 : 0.08);
+  emitAudio(state, enemy.kind === 'boss' ? 'bossKill' : 'kill', enemy.kind === 'boss' ? 1.4 : Math.min(1.2, 0.55 + state.combo * 0.04));
 
   addShockwave(
     state,
@@ -522,6 +577,7 @@ function damagePlayer(state, amount) {
   state.comboTimer = 0;
   state.shake = 16;
   state.flash = Math.max(state.flash, 0.25);
+  emitAudio(state, 'damage', 0.7);
   addShockwave(state, state.player.x, state.player.y, '#ff3d5a', 96, 5, 0.45);
   burst(state, state.player.x, state.player.y, '#ff3d5a', 24, 6);
 
@@ -530,6 +586,15 @@ function damagePlayer(state, amount) {
     state.message = { text: 'DESTROYED', timer: 999 };
     burst(state, state.player.x, state.player.y, '#ff4fd8', 120, 12);
   }
+}
+
+function emitAudio(state, type, intensity = 1) {
+  state.audioEvents.push({
+    type,
+    intensity,
+    time: state.time,
+  });
+  if (state.audioEvents.length > 48) state.audioEvents.splice(0, state.audioEvents.length - 48);
 }
 
 function spark(state, x, y, color) {

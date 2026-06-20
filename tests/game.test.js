@@ -49,6 +49,33 @@ test('bomb consumes charge, clears hostile bullets, and damages enemies', () => 
   assert.equal(game.player.stats.bombCharge, 0);
   assert.equal(game.enemyBullets.length, 0);
   assert.equal(game.enemies[0].hp, 2);
+  assert.deepEqual(
+    game.audioEvents.map((event) => event.type),
+    ['bomb'],
+  );
+});
+
+test('enemy kills emit audio events for beat-synced impact sounds', () => {
+  const game = createGame(1280, 720);
+  game.player.stats.bombCharge = 1;
+  game.enemies.push({
+    id: 'target',
+    kind: 'scout',
+    x: 700,
+    y: 300,
+    r: 16,
+    hp: 1,
+    maxHp: 1,
+    score: 130,
+    speed: -100,
+    fireTimer: 1,
+    moveSeed: 0,
+  });
+
+  triggerBomb(game);
+
+  assert.ok(game.audioEvents.some((event) => event.type === 'kill'));
+  assert.ok(game.audioEvents.some((event) => event.type === 'bomb'));
 });
 
 test('bomb creates short-lived shockwaves for explosive feedback', () => {

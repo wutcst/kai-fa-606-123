@@ -1,3 +1,4 @@
+import { createBeatAudio } from './game/audio.js';
 import { createGame, resizeGame, triggerBomb, updateGame } from './game/game.js';
 import { renderGame } from './game/render.js';
 
@@ -17,6 +18,7 @@ const restartButton = document.querySelector('#restartButton');
 let game = createGame(1280, 720);
 let last = performance.now();
 let paused = false;
+const audio = createBeatAudio({ bpm: 150 });
 const hudCache = {
   score: '',
   combo: '',
@@ -60,6 +62,7 @@ function loop(now) {
   last = now;
 
   if (!paused) updateGame(game, input, dt);
+  audio.update(game.audioEvents.splice(0));
   renderGame(ctx, game);
   syncHud();
   requestAnimationFrame(loop);
@@ -129,6 +132,7 @@ function setKey(code, value) {
 
 window.addEventListener('resize', resize);
 window.addEventListener('keydown', (event) => {
+  audio.unlock();
   setKey(event.code, true);
   if (event.code === 'Space') {
     event.preventDefault();
@@ -142,6 +146,7 @@ window.addEventListener('keydown', (event) => {
 window.addEventListener('keyup', (event) => setKey(event.code, false));
 
 canvas.addEventListener('pointerdown', (event) => {
+  audio.unlock();
   input.pointerActive = true;
   input.pointerX = event.clientX;
   input.pointerY = event.clientY;
@@ -156,8 +161,14 @@ canvas.addEventListener('pointerup', () => {
   input.pointerActive = false;
 });
 
-bombButton.addEventListener('click', () => triggerBomb(game));
-restartButton.addEventListener('click', restart);
+bombButton.addEventListener('click', () => {
+  audio.unlock();
+  triggerBomb(game);
+});
+restartButton.addEventListener('click', () => {
+  audio.unlock();
+  restart();
+});
 
 resize();
 requestAnimationFrame(loop);

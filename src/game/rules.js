@@ -49,13 +49,54 @@ export function collectPowerDrop(player, amount) {
   return player;
 }
 
+const BOSS_TIERS = [
+  {
+    tier: 'warden',
+    name: 'Pulse Warden',
+    hp: 900,
+    score: 2800,
+    radius: 74,
+    pattern: 'fan',
+  },
+  {
+    tier: 'seraph',
+    name: 'Blade Seraph',
+    hp: 1260,
+    score: 3800,
+    radius: 84,
+    pattern: 'crossfire',
+  },
+  {
+    tier: 'leviathan',
+    name: 'Void Leviathan',
+    hp: 1680,
+    score: 5200,
+    radius: 96,
+    pattern: 'spiral',
+  },
+  {
+    tier: 'overlord',
+    name: 'Nova Overlord',
+    hp: 2160,
+    score: 7000,
+    radius: 108,
+    pattern: 'storm',
+  },
+];
+
 export function getBossPhase(timeSeconds) {
   const cycle = Math.floor(timeSeconds / 30);
   if (cycle < 1) return null;
 
+  const tier = BOSS_TIERS[Math.min(cycle - 1, BOSS_TIERS.length - 1)];
+  const repeatScale = Math.max(0, cycle - BOSS_TIERS.length);
   return {
     cycle,
-    hp: 600 + cycle * 300,
-    score: 2000 + cycle * 800,
+    tier: tier.tier,
+    name: tier.name,
+    hp: tier.hp + repeatScale * 480,
+    score: tier.score + repeatScale * 1200,
+    radius: tier.radius,
+    pattern: tier.pattern,
   };
 }

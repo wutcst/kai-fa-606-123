@@ -172,34 +172,119 @@ function drawEnemy(ctx, enemy, time) {
 }
 
 function drawBoss(ctx, boss, time) {
+  const palette = getBossPalette(boss);
+  const pulse = Math.sin(time * 4) * 5;
   ctx.save();
   ctx.translate(boss.x, boss.y);
   ctx.globalCompositeOperation = 'lighter';
-  ctx.shadowColor = '#ff4fd8';
+  ctx.shadowColor = palette.glow;
   ctx.shadowBlur = 34;
-  ctx.fillStyle = '#35104b';
-  ctx.beginPath();
-  ctx.moveTo(-96, 0);
-  ctx.lineTo(-32, -74);
-  ctx.lineTo(74, -48);
-  ctx.lineTo(92, 0);
-  ctx.lineTo(74, 48);
-  ctx.lineTo(-32, 74);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = '#ff4fd8';
-  for (let i = -1; i <= 1; i++) {
-    ctx.beginPath();
-    ctx.arc(-22 + i * 42, Math.sin(time * 3 + i) * 6, 13, 0, TAU);
-    ctx.fill();
+
+  ctx.fillStyle = palette.hull;
+  drawBossHull(ctx, boss);
+
+  ctx.fillStyle = palette.core;
+  if (boss.tier === 'seraph') {
+    for (let i = -2; i <= 2; i++) {
+      ctx.beginPath();
+      ctx.ellipse(-12 + i * 28, Math.sin(time * 3 + i) * 7, 9, 17, Math.PI / 2.8, 0, TAU);
+      ctx.fill();
+    }
+  } else if (boss.tier === 'leviathan') {
+    for (let i = 0; i < 6; i++) {
+      const angle = time * 1.6 + i * (TAU / 6);
+      ctx.beginPath();
+      ctx.arc(Math.cos(angle) * 42 - 10, Math.sin(angle) * 28, 10, 0, TAU);
+      ctx.fill();
+    }
+  } else if (boss.tier === 'overlord') {
+    for (let i = 0; i < 8; i++) {
+      const angle = time * 1.2 + i * (TAU / 8);
+      ctx.beginPath();
+      ctx.arc(Math.cos(angle) * 52 - 8, Math.sin(angle) * 42, i % 2 ? 8 : 12, 0, TAU);
+      ctx.fill();
+    }
+  } else {
+    for (let i = -1; i <= 1; i++) {
+      ctx.beginPath();
+      ctx.arc(-22 + i * 42, Math.sin(time * 3 + i) * 6, 13, 0, TAU);
+      ctx.fill();
+    }
   }
-  ctx.strokeStyle = '#ffd166';
+
+  ctx.strokeStyle = palette.ring;
   ctx.lineWidth = 4;
   ctx.beginPath();
-  ctx.arc(-6, 0, 54 + Math.sin(time * 4) * 5, 0.2, TAU - 0.2);
+  ctx.arc(-6, 0, boss.r * 0.62 + pulse, 0.2, TAU - 0.2);
   ctx.stroke();
-  drawHealthNib(ctx, boss, 130);
+  drawHealthNib(ctx, boss, boss.r * 1.65);
   ctx.restore();
+}
+
+function drawBossHull(ctx, boss) {
+  if (boss.tier === 'seraph') {
+    ctx.beginPath();
+    ctx.moveTo(-boss.r * 1.12, 0);
+    ctx.lineTo(-boss.r * 0.34, -boss.r * 0.9);
+    ctx.lineTo(boss.r * 0.92, -boss.r * 0.58);
+    ctx.lineTo(boss.r * 0.5, 0);
+    ctx.lineTo(boss.r * 0.92, boss.r * 0.58);
+    ctx.lineTo(-boss.r * 0.34, boss.r * 0.9);
+    ctx.closePath();
+    ctx.fill();
+    return;
+  }
+
+  if (boss.tier === 'leviathan') {
+    ctx.beginPath();
+    ctx.ellipse(-8, 0, boss.r * 1.08, boss.r * 0.64, 0, 0, TAU);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-boss.r * 1.22, -boss.r * 0.28);
+    ctx.lineTo(-boss.r * 1.62, 0);
+    ctx.lineTo(-boss.r * 1.22, boss.r * 0.28);
+    ctx.closePath();
+    ctx.fill();
+    return;
+  }
+
+  if (boss.tier === 'overlord') {
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const angle = -Math.PI + i * (TAU / 10);
+      const radius = boss.r * (i % 2 ? 0.82 : 1.16);
+      const x = Math.cos(angle) * radius;
+      const y = Math.sin(angle) * radius;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+    return;
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(-boss.r * 1.14, 0);
+  ctx.lineTo(-boss.r * 0.38, -boss.r * 0.9);
+  ctx.lineTo(boss.r * 0.88, -boss.r * 0.58);
+  ctx.lineTo(boss.r * 1.1, 0);
+  ctx.lineTo(boss.r * 0.88, boss.r * 0.58);
+  ctx.lineTo(-boss.r * 0.38, boss.r * 0.9);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function getBossPalette(boss) {
+  if (boss.tier === 'seraph') {
+    return { hull: '#4a184f', core: '#ffd166', ring: '#4df8ff', glow: '#ffd166' };
+  }
+  if (boss.tier === 'leviathan') {
+    return { hull: '#151a62', core: '#4df8ff', ring: '#ff4fd8', glow: '#4df8ff' };
+  }
+  if (boss.tier === 'overlord') {
+    return { hull: '#4d1030', core: '#ff3d5a', ring: '#ffd166', glow: '#ff3d5a' };
+  }
+  return { hull: '#35104b', core: '#ff4fd8', ring: '#ffd166', glow: '#ff4fd8' };
 }
 
 function drawHealthNib(ctx, enemy, width = enemy.r * 2) {

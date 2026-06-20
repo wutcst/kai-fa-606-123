@@ -47,8 +47,42 @@ test('power drops stack weapon intensity but stay capped', () => {
   assert.equal(player.spread, 4);
 });
 
-test('boss phase appears on cadence and scales after each cycle', () => {
+test('boss phase appears on cadence with escalating boss tiers', () => {
   assert.equal(getBossPhase(29.9), null);
-  assert.deepEqual(getBossPhase(30.1), { cycle: 1, hp: 900, score: 2800 });
-  assert.deepEqual(getBossPhase(91), { cycle: 3, hp: 1500, score: 4400 });
+  assert.deepEqual(getBossPhase(30.1), {
+    cycle: 1,
+    tier: 'warden',
+    name: 'Pulse Warden',
+    hp: 900,
+    score: 2800,
+    radius: 74,
+    pattern: 'fan',
+  });
+  assert.deepEqual(getBossPhase(61), {
+    cycle: 2,
+    tier: 'seraph',
+    name: 'Blade Seraph',
+    hp: 1260,
+    score: 3800,
+    radius: 84,
+    pattern: 'crossfire',
+  });
+  assert.deepEqual(getBossPhase(91), {
+    cycle: 3,
+    tier: 'leviathan',
+    name: 'Void Leviathan',
+    hp: 1680,
+    score: 5200,
+    radius: 96,
+    pattern: 'spiral',
+  });
+  assert.deepEqual(getBossPhase(121), {
+    cycle: 4,
+    tier: 'overlord',
+    name: 'Nova Overlord',
+    hp: 2160,
+    score: 7000,
+    radius: 108,
+    pattern: 'storm',
+  });
 });
