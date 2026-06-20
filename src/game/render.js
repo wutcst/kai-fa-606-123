@@ -407,22 +407,26 @@ function drawImpactPulses(ctx, state) {
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
   ctx.lineCap = 'round';
+  let fullScreenFills = 0;
   for (const pulse of state.impactPulses) {
     const alpha = Math.max(0, pulse.life / pulse.maxLife);
     const radius = Math.min(pulse.radius, pulse.maxRadius);
-    const glow = ctx.createRadialGradient(pulse.x, pulse.y, 0, pulse.x, pulse.y, Math.max(1, radius));
-    glow.addColorStop(0, pulse.color);
-    glow.addColorStop(0.22, pulse.color);
-    glow.addColorStop(1, 'transparent');
+    if (fullScreenFills < 3) {
+      const glow = ctx.createRadialGradient(pulse.x, pulse.y, 0, pulse.x, pulse.y, Math.max(1, radius));
+      glow.addColorStop(0, pulse.color);
+      glow.addColorStop(0.22, pulse.color);
+      glow.addColorStop(1, 'transparent');
 
-    ctx.globalAlpha = alpha * 0.22 * pulse.force;
-    ctx.fillStyle = glow;
-    ctx.fillRect(0, 0, state.width, state.height);
+      ctx.globalAlpha = alpha * 0.18 * pulse.force;
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, state.width, state.height);
+      fullScreenFills += 1;
+    }
 
     ctx.globalAlpha = alpha * 0.74;
     ctx.strokeStyle = pulse.color;
     ctx.shadowColor = pulse.color;
-    ctx.shadowBlur = 22 * pulse.force;
+    ctx.shadowBlur = 14 * pulse.force;
     ctx.lineWidth = Math.max(2, 14 * alpha * pulse.force);
     ctx.beginPath();
     ctx.arc(pulse.x, pulse.y, radius, 0, TAU);
@@ -430,8 +434,8 @@ function drawImpactPulses(ctx, state) {
 
     ctx.globalAlpha = alpha * 0.34;
     ctx.lineWidth = Math.max(1, 4 * pulse.force);
-    for (let i = 0; i < 10; i++) {
-      const angle = state.time * 3.2 + i * (TAU / 10);
+    for (let i = 0; i < 6; i++) {
+      const angle = state.time * 3.2 + i * (TAU / 6);
       const inner = radius * 0.24;
       const outer = radius * (0.84 + pulse.force * 0.12);
       ctx.beginPath();
@@ -456,7 +460,7 @@ function drawScreenParticles(ctx, particles) {
     ctx.strokeStyle = particle.color;
     ctx.fillStyle = particle.color;
     ctx.shadowColor = particle.color;
-    ctx.shadowBlur = particle.type === 'slash' ? 24 : 12;
+    ctx.shadowBlur = particle.type === 'slash' ? 14 : 0;
 
     if (particle.type === 'slash') {
       ctx.lineWidth = Math.max(2, particle.r * 0.75);

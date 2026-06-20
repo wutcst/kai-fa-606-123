@@ -155,7 +155,7 @@ test('bomb creates short-lived shockwaves for explosive feedback', () => {
 test('update loop caps transient entities under heavy arcade effects', () => {
   const game = createGame(1280, 720);
 
-  for (let i = 0; i < 260; i++) {
+  for (let i = 0; i < 420; i++) {
     game.bullets.push({ x: 100, y: 100, vx: 0, vy: 0, r: 4, damage: 1, color: '#4df8ff' });
     game.enemyBullets.push({ x: 600, y: 300, vx: 0, vy: 0, r: 6, damage: 10, color: '#ff4fd8' });
     game.particles.push({ x: 640, y: 360, vx: 0, vy: 0, r: 2, life: 1, color: '#ffd166' });
@@ -173,8 +173,8 @@ test('update loop caps transient entities under heavy arcade effects', () => {
   assert.ok(game.bullets.length <= 140);
   assert.ok(game.enemyBullets.length <= 160);
   assert.ok(game.particles.length <= 240);
-  assert.ok(game.screenParticles.length <= 520);
+  assert.ok(game.screenParticles.length <= 360);
   assert.ok(game.shockwaves.length <= 24);
-  assert.ok(game.impactPulses.length <= 18);
+  assert.ok(game.impactPulses.length <= 8);
   assert.ok(game.drops.length <= 50);
 });

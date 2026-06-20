@@ -13,9 +13,9 @@ const LIMITS = {
   enemyBullets: 160,
   drops: 50,
   particles: 240,
-  screenParticles: 520,
+  screenParticles: 360,
   shockwaves: 24,
-  impactPulses: 18,
+  impactPulses: 8,
 };
 
 export function createGame(width, height) {
