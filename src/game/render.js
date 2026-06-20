@@ -14,13 +14,13 @@ export function renderGame(ctx, state) {
   drawDrops(ctx, state.drops, state.time);
   drawBullets(ctx, state.bullets, true);
   drawLaserBeams(ctx, state.laserBeams);
-  drawBullets(ctx, state.enemyBullets, false);
   drawEnemies(ctx, state);
   drawPlayer(ctx, state);
   drawParticles(ctx, state.particles);
   drawShockwaves(ctx, state.shockwaves);
   drawImpactPulses(ctx, state);
   drawScreenParticles(ctx, state.screenParticles);
+  drawBullets(ctx, state.enemyBullets, false);
   drawMessage(ctx, state);
   ctx.restore();
 

@@ -794,18 +794,22 @@ function screenBurst(state, x, y, color, count, force) {
   const available = LIMITS.screenParticles - state.screenParticles.length;
   count = Math.max(0, Math.min(count, available));
   const colors = [color, '#ffffff', '#fff7b0', '#4df8ff', '#ff4fd8', '#60ff9a'];
+  const focusRadius = Math.min(Math.max(150, 250 + force * 120), Math.min(state.width, state.height) * 0.72);
 
   for (let i = 0; i < count; i++) {
-    const spreadAcrossScreen = Math.random() < 0.36;
     const angle = Math.random() * TAU;
+    const spawnDistance = Math.sqrt(Math.random()) * focusRadius * 0.78;
     const speed = randomRange(360, 980) * force;
     const roll = Math.random();
     const type = roll < 0.4 ? 'slash' : roll < 0.78 ? 'streak' : 'confetti';
     const life = type === 'slash' ? randomRange(0.18, 0.42) : type === 'streak' ? randomRange(0.34, 0.72) : randomRange(0.55, 1.05);
     state.screenParticles.push({
       type,
-      x: spreadAcrossScreen ? Math.random() * state.width : x,
-      y: spreadAcrossScreen ? Math.random() * state.height : y,
+      x: clamp(x + Math.cos(angle) * spawnDistance, 0, state.width),
+      y: clamp(y + Math.sin(angle) * spawnDistance, 0, state.height),
+      focusX: x,
+      focusY: y,
+      focusRadius,
       vx: Math.cos(angle) * speed + randomRange(-80, 80),
       vy: Math.sin(angle) * speed + randomRange(-80, 80),
       angle,

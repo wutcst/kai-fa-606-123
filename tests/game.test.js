@@ -130,6 +130,8 @@ test('enemy kills create full-screen particle storms and impact pulses', () => {
   assert.ok(game.audioEvents.some((event) => event.type === 'kill'));
   assert.ok(game.impactPulses.length >= 2);
   assert.ok(game.screenParticles.length >= 96);
+  assert.ok(game.screenParticles.every((particle) => particle.focusRadius <= 420));
+  assert.ok(game.screenParticles.every((particle) => Math.hypot(particle.x - particle.focusX, particle.y - particle.focusY) <= particle.focusRadius));
   assert.ok(game.flash >= 0.18);
 });
 
@@ -143,6 +145,8 @@ test('bomb creates short-lived shockwaves for explosive feedback', () => {
   assert.ok(game.shockwaves.length >= 1);
   assert.ok(game.impactPulses.length >= 1);
   assert.ok(game.screenParticles.length >= 140);
+  assert.ok(game.screenParticles.every((particle) => particle.focusRadius <= 520));
+  assert.ok(game.screenParticles.every((particle) => Math.hypot(particle.x - particle.focusX, particle.y - particle.focusY) <= particle.focusRadius));
 
   for (let i = 0; i < 90; i++) {
     updateGame(game, {}, 1 / 60);
