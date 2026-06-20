@@ -18,7 +18,7 @@ const restartButton = document.querySelector('#restartButton');
 let game = createGame(1280, 720);
 let last = performance.now();
 let paused = false;
-const audio = createBeatAudio({ bpm: 150 });
+const audio = createBeatAudio({ bpm: 174 });
 const hudCache = {
   score: '',
   combo: '',
