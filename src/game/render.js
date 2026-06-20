@@ -18,6 +18,8 @@ export function renderGame(ctx, state) {
   drawPlayer(ctx, state);
   drawParticles(ctx, state.particles);
   drawShockwaves(ctx, state.shockwaves);
+  drawImpactPulses(ctx, state);
+  drawScreenParticles(ctx, state.screenParticles);
   drawMessage(ctx, state);
   ctx.restore();
 
@@ -394,6 +396,93 @@ function drawShockwaves(ctx, shockwaves) {
     ctx.beginPath();
     ctx.arc(wave.x, wave.y, Math.min(wave.radius * 0.62, wave.maxRadius), 0, TAU);
     ctx.stroke();
+  }
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
+
+function drawImpactPulses(ctx, state) {
+  if (!state.impactPulses.length) return;
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.lineCap = 'round';
+  for (const pulse of state.impactPulses) {
+    const alpha = Math.max(0, pulse.life / pulse.maxLife);
+    const radius = Math.min(pulse.radius, pulse.maxRadius);
+    const glow = ctx.createRadialGradient(pulse.x, pulse.y, 0, pulse.x, pulse.y, Math.max(1, radius));
+    glow.addColorStop(0, pulse.color);
+    glow.addColorStop(0.22, pulse.color);
+    glow.addColorStop(1, 'transparent');
+
+    ctx.globalAlpha = alpha * 0.22 * pulse.force;
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, 0, state.width, state.height);
+
+    ctx.globalAlpha = alpha * 0.74;
+    ctx.strokeStyle = pulse.color;
+    ctx.shadowColor = pulse.color;
+    ctx.shadowBlur = 22 * pulse.force;
+    ctx.lineWidth = Math.max(2, 14 * alpha * pulse.force);
+    ctx.beginPath();
+    ctx.arc(pulse.x, pulse.y, radius, 0, TAU);
+    ctx.stroke();
+
+    ctx.globalAlpha = alpha * 0.34;
+    ctx.lineWidth = Math.max(1, 4 * pulse.force);
+    for (let i = 0; i < 10; i++) {
+      const angle = state.time * 3.2 + i * (TAU / 10);
+      const inner = radius * 0.24;
+      const outer = radius * (0.84 + pulse.force * 0.12);
+      ctx.beginPath();
+      ctx.moveTo(pulse.x + Math.cos(angle) * inner, pulse.y + Math.sin(angle) * inner);
+      ctx.lineTo(pulse.x + Math.cos(angle) * outer, pulse.y + Math.sin(angle) * outer);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
+
+function drawScreenParticles(ctx, particles) {
+  if (!particles.length) return;
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.lineCap = 'round';
+  for (const particle of particles) {
+    const alpha = Math.max(0, particle.life / particle.maxLife);
+    ctx.globalAlpha = particle.type === 'confetti' ? alpha * 0.72 : alpha;
+    ctx.strokeStyle = particle.color;
+    ctx.fillStyle = particle.color;
+    ctx.shadowColor = particle.color;
+    ctx.shadowBlur = particle.type === 'slash' ? 24 : 12;
+
+    if (particle.type === 'slash') {
+      ctx.lineWidth = Math.max(2, particle.r * 0.75);
+      ctx.beginPath();
+      ctx.moveTo(particle.x, particle.y);
+      ctx.lineTo(
+        particle.x - Math.cos(particle.angle) * particle.length * (0.35 + alpha),
+        particle.y - Math.sin(particle.angle) * particle.length * (0.35 + alpha),
+      );
+      ctx.stroke();
+      continue;
+    }
+
+    ctx.save();
+    ctx.translate(particle.x, particle.y);
+    ctx.rotate(particle.angle);
+    if (particle.type === 'streak') {
+      ctx.lineWidth = Math.max(2, particle.r * 0.45);
+      ctx.beginPath();
+      ctx.moveTo(-particle.length * 0.5, 0);
+      ctx.lineTo(particle.length * 0.5, 0);
+      ctx.stroke();
+    } else {
+      ctx.fillRect(-particle.r * 0.5, -particle.r * 0.5, particle.r, particle.r);
+    }
+    ctx.restore();
   }
   ctx.restore();
   ctx.globalAlpha = 1;

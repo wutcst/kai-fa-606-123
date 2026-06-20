@@ -13,7 +13,9 @@ const LIMITS = {
   enemyBullets: 160,
   drops: 50,
   particles: 240,
+  screenParticles: 520,
   shockwaves: 24,
+  impactPulses: 18,
 };
 
 export function createGame(width, height) {
@@ -45,7 +47,9 @@ export function createGame(width, height) {
     enemies: [],
     drops: [],
     particles: [],
+    screenParticles: [],
     shockwaves: [],
+    impactPulses: [],
     audioEvents: [],
     stars: createStars(width, height),
   };
@@ -80,7 +84,9 @@ export function updateGame(state, input, dt) {
   updateBullets(state, dt);
   updateDrops(state, dt);
   updateParticles(state, dt);
+  updateScreenParticles(state, dt);
   updateShockwaves(state, dt);
+  updateImpactPulses(state, dt);
   handleCollisions(state);
   capTransientEntities(state);
 }
@@ -93,6 +99,8 @@ export function triggerBomb(state) {
   state.shake = 18;
   state.enemyBullets.length = 0;
   emitAudio(state, 'bomb', 1);
+  addImpactPulse(state, state.player.x + 82, state.player.y, '#fff7b0', Math.max(state.width, state.height) * 0.78, 0.5, 1.35);
+  screenBurst(state, state.player.x + 82, state.player.y, '#fff7b0', 170, 1.25);
   addShockwave(state, state.player.x + 82, state.player.y, '#fff7b0', Math.min(state.width, state.height) * 0.46, 8, 0.72);
   addShockwave(state, state.player.x + 82, state.player.y, '#ff4fd8', Math.min(state.width, state.height) * 0.34, 5, 0.5);
   burst(state, state.player.x + 80, state.player.y, '#fff7b0', 64, 9);
@@ -446,6 +454,20 @@ function updateParticles(state, dt) {
   trimToLimit(state.particles, LIMITS.particles);
 }
 
+function updateScreenParticles(state, dt) {
+  for (const particle of state.screenParticles) {
+    particle.x += particle.vx * dt;
+    particle.y += particle.vy * dt;
+    particle.vx *= 1 - dt * 0.8;
+    particle.vy *= 1 - dt * 0.8;
+    particle.angle += particle.spin * dt;
+    particle.life -= dt;
+  }
+
+  state.screenParticles = state.screenParticles.filter((particle) => particle.life > 0);
+  trimToLimit(state.screenParticles, LIMITS.screenParticles);
+}
+
 function updateShockwaves(state, dt) {
   for (const wave of state.shockwaves) {
     wave.radius += wave.speed * dt;
@@ -454,6 +476,16 @@ function updateShockwaves(state, dt) {
 
   state.shockwaves = state.shockwaves.filter((wave) => wave.life > 0);
   trimToLimit(state.shockwaves, LIMITS.shockwaves);
+}
+
+function updateImpactPulses(state, dt) {
+  for (const pulse of state.impactPulses) {
+    pulse.radius += pulse.speed * dt;
+    pulse.life -= dt;
+  }
+
+  state.impactPulses = state.impactPulses.filter((pulse) => pulse.life > 0);
+  trimToLimit(state.impactPulses, LIMITS.impactPulses);
 }
 
 function handleCollisions(state) {
@@ -466,6 +498,11 @@ function handleCollisions(state) {
       enemy.hp -= bullet.damage;
       state.bullets.splice(b, 1);
       spark(state, bullet.x, bullet.y, bullet.color);
+      emitAudio(state, 'hit', enemy.kind === 'boss' ? 1.25 : Math.min(1.1, 0.48 + bullet.damage * 0.24));
+      state.shake = Math.max(state.shake, enemy.kind === 'boss' ? 9 : 4);
+      state.flash = Math.max(state.flash, enemy.kind === 'boss' ? 0.16 : 0.1);
+      addImpactPulse(state, bullet.x, bullet.y, bullet.color, enemy.kind === 'boss' ? 190 : 92, 0.22, enemy.kind === 'boss' ? 1.05 : 0.62);
+      screenBurst(state, bullet.x, bullet.y, bullet.color, enemy.kind === 'boss' ? 34 : 20, enemy.kind === 'boss' ? 0.62 : 0.36);
       if (enemy.hp <= 0) killEnemy(state, e);
       break;
     }
@@ -519,7 +556,7 @@ function killEnemy(state, index) {
   state.player.stats.bombCharge = reward.bombCharge;
   state.kills += 1;
   state.shake = Math.max(state.shake, enemy.kind === 'boss' ? 20 : 6);
-  state.flash = Math.max(state.flash, enemy.kind === 'boss' ? 1 : 0.08);
+  state.flash = Math.max(state.flash, enemy.kind === 'boss' ? 1 : 0.22);
   emitAudio(state, enemy.kind === 'boss' ? 'bossKill' : 'kill', enemy.kind === 'boss' ? 1.4 : Math.min(1.2, 0.55 + state.combo * 0.04));
 
   addShockwave(
@@ -540,6 +577,16 @@ function killEnemy(state, index) {
     enemy.kind === 'boss' ? 6 : 3,
     enemy.kind === 'boss' ? 0.68 : 0.32,
   );
+  addImpactPulse(
+    state,
+    enemy.x,
+    enemy.y,
+    enemy.kind === 'boss' ? '#ffd166' : '#4df8ff',
+    enemy.kind === 'boss' ? Math.max(state.width, state.height) * 0.9 : Math.max(state.width, state.height) * 0.42,
+    enemy.kind === 'boss' ? 0.74 : 0.42,
+    enemy.kind === 'boss' ? 1.5 : 0.95,
+  );
+  screenBurst(state, enemy.x, enemy.y, enemy.kind === 'boss' ? '#ffd166' : '#4df8ff', enemy.kind === 'boss' ? 260 : 104, enemy.kind === 'boss' ? 1.7 : 0.9);
   burst(state, enemy.x, enemy.y, enemy.kind === 'boss' ? '#ffd166' : '#4df8ff', enemy.kind === 'boss' ? 120 : 36, enemy.kind === 'boss' ? 10 : 5.5);
   dropLoot(state, enemy);
   state.enemies.splice(index, 1);
@@ -579,11 +626,15 @@ function damagePlayer(state, amount) {
   state.flash = Math.max(state.flash, 0.25);
   emitAudio(state, 'damage', 0.7);
   addShockwave(state, state.player.x, state.player.y, '#ff3d5a', 96, 5, 0.45);
+  addImpactPulse(state, state.player.x, state.player.y, '#ff3d5a', 180, 0.38, 0.85);
+  screenBurst(state, state.player.x, state.player.y, '#ff3d5a', 72, 0.7);
   burst(state, state.player.x, state.player.y, '#ff3d5a', 24, 6);
 
   if (state.player.stats.hp <= 0) {
     state.mode = 'gameover';
     state.message = { text: 'DESTROYED', timer: 999 };
+    addImpactPulse(state, state.player.x, state.player.y, '#ff4fd8', Math.max(state.width, state.height) * 0.76, 0.75, 1.4);
+    screenBurst(state, state.player.x, state.player.y, '#ff4fd8', 210, 1.35);
     burst(state, state.player.x, state.player.y, '#ff4fd8', 120, 12);
   }
 }
@@ -626,6 +677,35 @@ function burst(state, x, y, color, count, speedScale) {
   }
 }
 
+function screenBurst(state, x, y, color, count, force) {
+  const available = LIMITS.screenParticles - state.screenParticles.length;
+  count = Math.max(0, Math.min(count, available));
+  const colors = [color, '#ffffff', '#fff7b0', '#4df8ff', '#ff4fd8', '#60ff9a'];
+
+  for (let i = 0; i < count; i++) {
+    const spreadAcrossScreen = Math.random() < 0.36;
+    const angle = Math.random() * TAU;
+    const speed = randomRange(360, 980) * force;
+    const roll = Math.random();
+    const type = roll < 0.4 ? 'slash' : roll < 0.78 ? 'streak' : 'confetti';
+    const life = type === 'slash' ? randomRange(0.18, 0.42) : type === 'streak' ? randomRange(0.34, 0.72) : randomRange(0.55, 1.05);
+    state.screenParticles.push({
+      type,
+      x: spreadAcrossScreen ? Math.random() * state.width : x,
+      y: spreadAcrossScreen ? Math.random() * state.height : y,
+      vx: Math.cos(angle) * speed + randomRange(-80, 80),
+      vy: Math.sin(angle) * speed + randomRange(-80, 80),
+      angle,
+      spin: randomRange(-18, 18),
+      length: randomRange(24, 92) * Math.min(2.2, 0.8 + force),
+      r: randomRange(2.4, 8.6) * Math.min(1.8, 0.9 + force * 0.55),
+      life,
+      maxLife: life,
+      color: colors[(Math.random() * colors.length) | 0],
+    });
+  }
+}
+
 function addShockwave(state, x, y, color, maxRadius, lineWidth, life) {
   if (state.shockwaves.length >= LIMITS.shockwaves) state.shockwaves.shift();
   state.shockwaves.push({
@@ -641,12 +721,29 @@ function addShockwave(state, x, y, color, maxRadius, lineWidth, life) {
   });
 }
 
+function addImpactPulse(state, x, y, color, maxRadius, life, force) {
+  if (state.impactPulses.length >= LIMITS.impactPulses) state.impactPulses.shift();
+  state.impactPulses.push({
+    x,
+    y,
+    radius: 8,
+    maxRadius,
+    speed: maxRadius / life,
+    life,
+    maxLife: life,
+    color,
+    force,
+  });
+}
+
 function capTransientEntities(state) {
   trimToLimit(state.bullets, LIMITS.bullets);
   trimToLimit(state.enemyBullets, LIMITS.enemyBullets);
   trimToLimit(state.drops, LIMITS.drops);
   trimToLimit(state.particles, LIMITS.particles);
+  trimToLimit(state.screenParticles, LIMITS.screenParticles);
   trimToLimit(state.shockwaves, LIMITS.shockwaves);
+  trimToLimit(state.impactPulses, LIMITS.impactPulses);
 }
 
 function trimToLimit(items, limit) {

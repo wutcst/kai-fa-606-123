@@ -110,6 +110,13 @@ export function createBeatAudio({ bpm = 174 } = {}) {
       return;
     }
 
+    if (event.type === 'hit') {
+      scheduleImpact(now + 0.003, 132, 0.08, 0.1 * intensity);
+      schedulePickScrape(now + 0.006, 0.08 * intensity);
+      if (intensity > 1) scheduleKick(now + 0.004, false, 0.42 * intensity);
+      return;
+    }
+
     if (event.type === 'power' || event.type === 'charge' || event.type === 'heal') {
       const notes = event.type === 'heal' ? [329.63, 440] : [246.94, 329.63];
       schedulePowerChord(beatTime, notes, 0.13, 0.07);

@@ -78,6 +78,61 @@ test('enemy kills emit audio events for beat-synced impact sounds', () => {
   assert.ok(game.audioEvents.some((event) => event.type === 'bomb'));
 });
 
+test('bullet hits emit hard impact feedback before the enemy dies', () => {
+  const game = createGame(1280, 720);
+  game.spawnTimer = 999;
+  game.enemies.push({
+    id: 'target',
+    kind: 'gunship',
+    x: 700,
+    y: 300,
+    r: 34,
+    hp: 20,
+    maxHp: 20,
+    score: 620,
+    speed: 0,
+    fireTimer: 10,
+    moveSeed: 0,
+  });
+  game.bullets.push({ x: 700, y: 300, vx: 0, vy: 0, r: 8, damage: 2, color: '#ffd166' });
+
+  updateGame(game, {}, 1 / 60);
+
+  assert.equal(game.enemies[0].hp, 18);
+  assert.ok(game.audioEvents.some((event) => event.type === 'hit'));
+  assert.ok(game.impactPulses.length >= 1);
+  assert.ok(game.screenParticles.length >= 18);
+  assert.ok(game.shake >= 3);
+});
+
+test('enemy kills create full-screen particle storms and impact pulses', () => {
+  const game = createGame(1280, 720);
+  game.spawnTimer = 999;
+  game.enemies.push({
+    id: 'target',
+    kind: 'scout',
+    x: 700,
+    y: 300,
+    r: 16,
+    hp: 1,
+    maxHp: 1,
+    score: 130,
+    speed: 0,
+    fireTimer: 10,
+    moveSeed: 0,
+  });
+  game.bullets.push({ x: 700, y: 300, vx: 0, vy: 0, r: 8, damage: 2, color: '#4df8ff' });
+
+  updateGame(game, {}, 1 / 60);
+
+  assert.equal(game.enemies.length, 0);
+  assert.ok(game.audioEvents.some((event) => event.type === 'hit'));
+  assert.ok(game.audioEvents.some((event) => event.type === 'kill'));
+  assert.ok(game.impactPulses.length >= 2);
+  assert.ok(game.screenParticles.length >= 96);
+  assert.ok(game.flash >= 0.18);
+});
+
 test('bomb creates short-lived shockwaves for explosive feedback', () => {
   const game = createGame(1280, 720);
   game.player.stats.bombCharge = 1;
@@ -86,12 +141,15 @@ test('bomb creates short-lived shockwaves for explosive feedback', () => {
   triggerBomb(game);
 
   assert.ok(game.shockwaves.length >= 1);
+  assert.ok(game.impactPulses.length >= 1);
+  assert.ok(game.screenParticles.length >= 140);
 
   for (let i = 0; i < 90; i++) {
     updateGame(game, {}, 1 / 60);
   }
 
   assert.equal(game.shockwaves.length, 0);
+  assert.equal(game.impactPulses.length, 0);
 });
 
 test('update loop caps transient entities under heavy arcade effects', () => {
@@ -101,7 +159,9 @@ test('update loop caps transient entities under heavy arcade effects', () => {
     game.bullets.push({ x: 100, y: 100, vx: 0, vy: 0, r: 4, damage: 1, color: '#4df8ff' });
     game.enemyBullets.push({ x: 600, y: 300, vx: 0, vy: 0, r: 6, damage: 10, color: '#ff4fd8' });
     game.particles.push({ x: 640, y: 360, vx: 0, vy: 0, r: 2, life: 1, color: '#ffd166' });
+    game.screenParticles.push({ x: 640, y: 360, vx: 0, vy: 0, r: 2, life: 1, maxLife: 1, color: '#ffd166' });
     game.shockwaves.push({ x: 640, y: 360, radius: 1, maxRadius: 120, life: 1, maxLife: 1, color: '#ffd166', lineWidth: 4 });
+    game.impactPulses.push({ x: 640, y: 360, radius: 1, maxRadius: 120, life: 1, maxLife: 1, color: '#ffd166', force: 1 });
   }
 
   for (let i = 0; i < 90; i++) {
@@ -113,6 +173,8 @@ test('update loop caps transient entities under heavy arcade effects', () => {
   assert.ok(game.bullets.length <= 140);
   assert.ok(game.enemyBullets.length <= 160);
   assert.ok(game.particles.length <= 240);
+  assert.ok(game.screenParticles.length <= 520);
   assert.ok(game.shockwaves.length <= 24);
+  assert.ok(game.impactPulses.length <= 18);
   assert.ok(game.drops.length <= 50);
 });
