@@ -3,8 +3,15 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "main": "desktop/main.cjs",
   "scripts": {
     "start": "python3 -m http.server 4173",
+    "desktop": "electron .",
+    "package:win": "electron-packager . \"Starline Valkyrie\" --platform=win32 --arch=x64 --out=release --overwrite --asar --prune=true --ignore=\"^/(docs|tests|target|release|\\.git|node_modules|src/main/java)(/|$)\" --ignore=\"^/(REPORT\\.docx|REPORT\\.pdf|pom\\.xml)$\"",
     "test": "node --test tests/*.test.js"
+  },
+  "devDependencies": {
+    "@electron/packager": "18.4.4",
+    "electron": "41.7.1"
   }
 }

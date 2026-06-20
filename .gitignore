@@ -1,6 +1,8 @@
 # 忽略以下目录中的所有子目录及文件
 /target/*
 /.idea/*
+/node_modules/
+/release/
 
 # 忽略以下文件
 *.iml
