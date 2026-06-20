@@ -3,10 +3,12 @@ import assert from 'node:assert/strict';
 
 import {
   applyKillReward,
+  activateSpecialWeapon,
   collectPowerDrop,
   createPlayerStats,
   getAutoFireShots,
   getBossPhase,
+  getPlayerLevel,
   updateCombo,
 } from '../src/game/rules.js';
 
@@ -45,6 +47,39 @@ test('power drops stack weapon intensity but stay capped', () => {
   assert.equal(player.power, 3);
   assert.equal(player.fireInterval, 0.075);
   assert.equal(player.spread, 4);
+});
+
+test('player level follows power milestones', () => {
+  assert.equal(getPlayerLevel(0), 1);
+  assert.equal(getPlayerLevel(-1), 1);
+  assert.equal(getPlayerLevel(1), 2);
+  assert.equal(getPlayerLevel(2), 3);
+  assert.equal(getPlayerLevel(3), 4);
+  assert.equal(getPlayerLevel(99), 4);
+
+  const player = createPlayerStats();
+  collectPowerDrop(player, 2.2);
+
+  assert.equal(player.level, 3);
+});
+
+test('special weapon pickups activate one timed attack mode', () => {
+  const player = createPlayerStats();
+
+  activateSpecialWeapon(player, 'laser');
+
+  assert.equal(player.weaponMode, 'laser');
+  assert.equal(player.weaponTimer, 9);
+
+  activateSpecialWeapon(player, 'missile');
+
+  assert.equal(player.weaponMode, 'missile');
+  assert.equal(player.weaponTimer, 10);
+
+  activateSpecialWeapon(player, 'unknown');
+
+  assert.equal(player.weaponMode, 'missile');
+  assert.equal(player.weaponTimer, 10);
 });
 
 test('boss phase appears on cadence with escalating boss tiers', () => {

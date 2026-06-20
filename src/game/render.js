@@ -13,6 +13,7 @@ export function renderGame(ctx, state) {
   ctx.translate(shakeX, shakeY);
   drawDrops(ctx, state.drops, state.time);
   drawBullets(ctx, state.bullets, true);
+  drawLaserBeams(ctx, state.laserBeams);
   drawBullets(ctx, state.enemyBullets, false);
   drawEnemies(ctx, state);
   drawPlayer(ctx, state);
@@ -97,39 +98,89 @@ function drawNebula(ctx, x, y, radius, color, alpha) {
 
 function drawPlayer(ctx, state) {
   const player = state.player;
+  const level = player.stats.level || 1;
   const flicker = player.invulnerable > 0 && Math.floor(state.time * 18) % 2 === 0;
   if (flicker) ctx.globalAlpha = 0.48;
 
   ctx.save();
   ctx.translate(player.x, player.y);
   ctx.globalCompositeOperation = 'lighter';
-  const flame = 24 + Math.sin(state.time * 34) * 8;
+  const flame = 24 + level * 7 + Math.sin(state.time * 34) * 8;
   ctx.fillStyle = '#4df8ff';
   ctx.shadowColor = '#4df8ff';
   ctx.shadowBlur = 22;
   ctx.beginPath();
-  ctx.moveTo(-18, -9);
+  ctx.moveTo(-18, -8 - level * 1.5);
   ctx.lineTo(-18 - flame, 0);
-  ctx.lineTo(-18, 9);
+  ctx.lineTo(-18, 8 + level * 1.5);
   ctx.closePath();
   ctx.fill();
+  if (level >= 3) {
+    ctx.fillStyle = '#ff4fd8';
+    ctx.globalAlpha = 0.78;
+    ctx.beginPath();
+    ctx.moveTo(-12, -18);
+    ctx.lineTo(-34 - flame * 0.45, -24);
+    ctx.lineTo(-18, -7);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-12, 18);
+    ctx.lineTo(-34 - flame * 0.45, 24);
+    ctx.lineTo(-18, 7);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
   ctx.restore();
 
   ctx.save();
   ctx.translate(player.x, player.y);
   ctx.shadowColor = '#4df8ff';
-  ctx.shadowBlur = 20;
+  ctx.shadowBlur = 18 + level * 4;
   ctx.fillStyle = '#eaffff';
   ctx.beginPath();
-  ctx.moveTo(31, 0);
-  ctx.lineTo(-14, -19);
+  ctx.moveTo(31 + level * 3, 0);
+  ctx.lineTo(-14, -19 - level * 2);
   ctx.lineTo(-4, -5);
   ctx.lineTo(-26, -2);
   ctx.lineTo(-26, 2);
   ctx.lineTo(-4, 5);
-  ctx.lineTo(-14, 19);
+  ctx.lineTo(-14, 19 + level * 2);
   ctx.closePath();
   ctx.fill();
+  if (level >= 2) {
+    ctx.fillStyle = level >= 4 ? '#ffd166' : '#4df8ff';
+    ctx.beginPath();
+    ctx.moveTo(-2, -12);
+    ctx.lineTo(-30 - level * 4, -30 - level * 2);
+    ctx.lineTo(-12, -4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-2, 12);
+    ctx.lineTo(-30 - level * 4, 30 + level * 2);
+    ctx.lineTo(-12, 4);
+    ctx.closePath();
+    ctx.fill();
+  }
+  if (level >= 3) {
+    ctx.fillStyle = '#ffd166';
+    ctx.fillRect(2, -24 - level * 2, 20 + level * 4, 5);
+    ctx.fillRect(2, 19 + level * 2, 20 + level * 4, 5);
+  }
+  if (level >= 4) {
+    ctx.strokeStyle = '#ff4fd8';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(12, -32);
+    ctx.lineTo(42, -42);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(12, 32);
+    ctx.lineTo(42, 42);
+    ctx.stroke();
+  }
   ctx.fillStyle = '#ff4fd8';
   ctx.beginPath();
   ctx.moveTo(10, 0);
@@ -311,7 +362,7 @@ function drawBullets(ctx, bullets, friendly) {
     ctx.shadowColor = color;
     for (const bullet of bullets) {
       if (bullet.color !== color) continue;
-      const trail = friendly ? 18 : 10;
+      const trail = bullet.explosiveRadius ? 30 : friendly ? 18 : 10;
       hasColor = true;
       ctx.moveTo(bullet.x - Math.sign(bullet.vx) * trail, bullet.y);
       ctx.lineTo(bullet.x, bullet.y);
@@ -322,10 +373,41 @@ function drawBullets(ctx, bullets, friendly) {
   ctx.shadowBlur = 0;
   ctx.fillStyle = '#ffffff';
   for (const bullet of bullets) {
-    const size = friendly ? 3.5 : 4.5;
+    const size = bullet.explosiveRadius ? bullet.r * 1.35 : friendly ? 3.5 : 4.5;
     ctx.fillRect(bullet.x - size / 2, bullet.y - size / 2, size, size);
   }
   ctx.restore();
+}
+
+function drawLaserBeams(ctx, beams) {
+  if (!beams.length) return;
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.lineCap = 'round';
+  for (const beam of beams) {
+    const alpha = Math.max(0, beam.life / beam.maxLife);
+    ctx.globalAlpha = alpha * 0.9;
+    ctx.strokeStyle = beam.color;
+    ctx.shadowColor = beam.color;
+    ctx.shadowBlur = 16;
+    ctx.lineWidth = beam.width;
+    ctx.beginPath();
+    ctx.moveTo(beam.x1, beam.y1);
+    ctx.lineTo(beam.x2, beam.y2);
+    ctx.stroke();
+
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = '#ffffff';
+    ctx.shadowBlur = 0;
+    ctx.lineWidth = Math.max(3, beam.width * 0.28);
+    ctx.beginPath();
+    ctx.moveTo(beam.x1, beam.y1);
+    ctx.lineTo(beam.x2, beam.y2);
+    ctx.stroke();
+  }
+  ctx.restore();
+  ctx.globalAlpha = 1;
 }
 
 function drawDrops(ctx, drops, time) {

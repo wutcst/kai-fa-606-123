@@ -1,5 +1,6 @@
 import {
   applyKillReward,
+  activateSpecialWeapon,
   collectPowerDrop,
   createPlayerStats,
   getAutoFireShots,
@@ -10,6 +11,7 @@ import {
 const TAU = Math.PI * 2;
 const LIMITS = {
   bullets: 140,
+  laserBeams: 12,
   enemyBullets: 160,
   drops: 50,
   particles: 240,
@@ -43,6 +45,7 @@ export function createGame(width, height) {
       stats: playerStats,
     },
     bullets: [],
+    laserBeams: [],
     enemyBullets: [],
     enemies: [],
     drops: [],
@@ -82,6 +85,7 @@ export function updateGame(state, input, dt) {
   spawnEnemies(state, dt);
   updateEnemies(state, dt);
   updateBullets(state, dt);
+  updateLaserBeams(state, dt);
   updateDrops(state, dt);
   updateParticles(state, dt);
   updateScreenParticles(state, dt);
@@ -165,6 +169,9 @@ function updateComboState(state, dt) {
 
 function firePlayerWeapons(state, dt) {
   const player = state.player;
+  updateSpecialWeapon(player.stats, dt);
+  if (player.stats.weaponMode === 'laser') fireLaser(state, dt);
+
   const fire = getAutoFireShots(dt, player.stats.fireInterval, player.fireTimer);
   player.fireTimer = fire.nextTimer;
 
@@ -189,12 +196,75 @@ function firePlayerWeapons(state, dt) {
       });
     }
 
+    if (player.stats.weaponMode === 'missile') {
+      state.bullets.push({
+        x: player.x + 34,
+        y: player.y + Math.sin(state.time * 14) * 16,
+        vx: 560,
+        vy: 0,
+        r: 12,
+        damage: 10 + player.stats.level * 2,
+        color: '#ffd166',
+        explosiveRadius: 128 + player.stats.level * 10,
+        explosiveDamage: 13 + player.stats.level,
+      });
+      emitAudio(state, 'weapon', 0.9);
+    }
+
     if (player.stats.power >= 3) {
       state.bullets.push(
         { x: player.x + 18, y: player.y - 23, vx: 760, vy: -42, r: 6, damage: 2, color: '#ff4fd8' },
         { x: player.x + 18, y: player.y + 23, vx: 760, vy: 42, r: 6, damage: 2, color: '#ff4fd8' },
       );
     }
+  }
+}
+
+function updateSpecialWeapon(stats, dt) {
+  if (stats.weaponTimer <= 0) {
+    stats.weaponMode = 'standard';
+    stats.weaponTimer = 0;
+    stats.weaponSfxTimer = 0;
+    return;
+  }
+
+  stats.weaponTimer = Math.max(0, stats.weaponTimer - dt);
+  stats.weaponSfxTimer = Math.max(0, stats.weaponSfxTimer - dt);
+  if (stats.weaponTimer === 0) stats.weaponMode = 'standard';
+}
+
+function fireLaser(state, dt) {
+  const player = state.player;
+  const startX = player.x + 28;
+  const endX = state.width + 80;
+  const width = 16 + player.stats.level * 4;
+  let didHit = false;
+
+  state.laserBeams.push({
+    x1: startX,
+    y1: player.y,
+    x2: endX,
+    y2: player.y + Math.sin(state.time * 26) * 4,
+    width,
+    life: 0.08,
+    maxLife: 0.08,
+    color: player.stats.level >= 4 ? '#fff7b0' : '#4df8ff',
+  });
+
+  for (let i = state.enemies.length - 1; i >= 0; i--) {
+    const enemy = state.enemies[i];
+    if (enemy.x < startX || enemy.x > endX) continue;
+    if (Math.abs(enemy.y - player.y) > enemy.r + width) continue;
+
+    enemy.hp -= (132 + player.stats.level * 24) * dt;
+    didHit = true;
+    spark(state, enemy.x - enemy.r * 0.5, enemy.y, '#4df8ff');
+    if (enemy.hp <= 0) killEnemy(state, i);
+  }
+
+  if (didHit && player.stats.weaponSfxTimer <= 0) {
+    emitAudio(state, 'laser', 0.9 + player.stats.level * 0.12);
+    player.stats.weaponSfxTimer = 0.16;
   }
 }
 
@@ -426,6 +496,15 @@ function updateBullets(state, dt) {
   trimToLimit(state.enemyBullets, LIMITS.enemyBullets);
 }
 
+function updateLaserBeams(state, dt) {
+  for (const beam of state.laserBeams) {
+    beam.life -= dt;
+  }
+
+  state.laserBeams = state.laserBeams.filter((beam) => beam.life > 0);
+  trimToLimit(state.laserBeams, LIMITS.laserBeams);
+}
+
 function updateDrops(state, dt) {
   for (const drop of state.drops) {
     const dx = state.player.x - drop.x;
@@ -495,6 +574,12 @@ function handleCollisions(state) {
       const enemy = state.enemies[e];
       if (!touching(bullet, enemy)) continue;
 
+      if (bullet.explosiveRadius) {
+        state.bullets.splice(b, 1);
+        explodePlayerProjectile(state, bullet);
+        break;
+      }
+
       enemy.hp -= bullet.damage;
       state.bullets.splice(b, 1);
       spark(state, bullet.x, bullet.y, bullet.color);
@@ -532,10 +617,38 @@ function handleCollisions(state) {
     if (drop.kind === 'power') collectPowerDrop(state.player.stats, drop.value);
     if (drop.kind === 'heal') state.player.stats.hp = Math.min(state.player.stats.maxHp, state.player.stats.hp + 18);
     if (drop.kind === 'charge') state.player.stats.bombCharge = Math.min(1, state.player.stats.bombCharge + 0.28);
-    emitAudio(state, drop.kind, 0.6);
+    if (drop.kind === 'laser' || drop.kind === 'missile') {
+      activateSpecialWeapon(state.player.stats, drop.kind);
+      state.message = { text: drop.kind === 'laser' ? 'LASER' : 'MISSILE', timer: 0.8 };
+      state.flash = Math.max(state.flash, 0.18);
+      screenBurst(state, drop.x, drop.y, drop.color, 48, 0.5);
+      emitAudio(state, 'weapon', 1);
+    } else {
+      emitAudio(state, drop.kind, 0.6);
+    }
     state.score += 80 * Math.max(1, state.combo);
     state.drops.splice(i, 1);
     burst(state, drop.x, drop.y, drop.color, 12, 4);
+  }
+}
+
+function explodePlayerProjectile(state, projectile) {
+  emitAudio(state, 'missile', 1.15);
+  state.shake = Math.max(state.shake, 12);
+  state.flash = Math.max(state.flash, 0.32);
+  addShockwave(state, projectile.x, projectile.y, '#ffd166', projectile.explosiveRadius, 7, 0.42);
+  addImpactPulse(state, projectile.x, projectile.y, '#ffd166', projectile.explosiveRadius * 2.4, 0.38, 1.1);
+  screenBurst(state, projectile.x, projectile.y, '#ffd166', 110, 0.82);
+  burst(state, projectile.x, projectile.y, '#ffd166', 48, 7);
+
+  for (let i = state.enemies.length - 1; i >= 0; i--) {
+    const enemy = state.enemies[i];
+    const distance = Math.hypot(enemy.x - projectile.x, enemy.y - projectile.y);
+    if (distance > projectile.explosiveRadius + enemy.r) continue;
+
+    enemy.hp -= projectile.explosiveDamage + (touching(projectile, enemy) ? projectile.damage : 0);
+    spark(state, enemy.x, enemy.y, '#ffd166');
+    if (enemy.hp <= 0) killEnemy(state, i);
   }
 }
 
@@ -602,17 +715,17 @@ function dropLoot(state, enemy) {
   const drops = enemy.kind === 'boss' ? 14 : enemy.kind === 'gunship' ? 4 : Math.random() > 0.42 ? 1 : 0;
   for (let i = 0; i < drops; i++) {
     const roll = Math.random();
-    const kind = roll > 0.9 ? 'heal' : roll > 0.74 ? 'charge' : 'power';
+    const kind = roll > 0.94 ? 'laser' : roll > 0.88 ? 'missile' : roll > 0.78 ? 'heal' : roll > 0.62 ? 'charge' : 'power';
     state.drops.push({
       kind,
       x: enemy.x + randomRange(-enemy.r, enemy.r),
       y: enemy.y + randomRange(-enemy.r, enemy.r),
       vx: randomRange(-30, 80),
       vy: randomRange(-120, 120),
-      r: kind === 'heal' ? 9 : 7,
+      r: kind === 'heal' || kind === 'laser' || kind === 'missile' ? 9 : 7,
       life: enemy.kind === 'boss' ? 8 : 5.5,
       value: kind === 'power' ? 0.32 : 0,
-      color: kind === 'heal' ? '#60ff9a' : kind === 'charge' ? '#ffd166' : '#4df8ff',
+      color: kind === 'heal' ? '#60ff9a' : kind === 'charge' || kind === 'missile' ? '#ffd166' : kind === 'laser' ? '#ff4fd8' : '#4df8ff',
     });
   }
 }
@@ -738,6 +851,7 @@ function addImpactPulse(state, x, y, color, maxRadius, life, force) {
 
 function capTransientEntities(state) {
   trimToLimit(state.bullets, LIMITS.bullets);
+  trimToLimit(state.laserBeams, LIMITS.laserBeams);
   trimToLimit(state.enemyBullets, LIMITS.enemyBullets);
   trimToLimit(state.drops, LIMITS.drops);
   trimToLimit(state.particles, LIMITS.particles);

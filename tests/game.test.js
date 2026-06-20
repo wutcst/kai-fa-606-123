@@ -152,6 +152,121 @@ test('bomb creates short-lived shockwaves for explosive feedback', () => {
   assert.equal(game.impactPulses.length, 0);
 });
 
+test('special weapon drops activate laser and missile modes', () => {
+  const game = createGame(1280, 720);
+  game.spawnTimer = 999;
+  game.drops.push({ kind: 'laser', x: game.player.x, y: game.player.y, vx: 0, vy: 0, r: 10, life: 5, value: 0, color: '#ff4fd8' });
+
+  updateGame(game, {}, 1 / 60);
+
+  assert.equal(game.player.stats.weaponMode, 'laser');
+  assert.ok(game.player.stats.weaponTimer > 8.8);
+  assert.ok(game.audioEvents.some((event) => event.type === 'weapon'));
+
+  game.drops.push({ kind: 'missile', x: game.player.x, y: game.player.y, vx: 0, vy: 0, r: 10, life: 5, value: 0, color: '#ffd166' });
+
+  updateGame(game, {}, 1 / 60);
+
+  assert.equal(game.player.stats.weaponMode, 'missile');
+  assert.ok(game.player.stats.weaponTimer > 9.8);
+});
+
+test('laser mode burns enemies in a continuous forward beam', () => {
+  const game = createGame(1280, 720);
+  game.spawnTimer = 999;
+  game.player.stats.weaponMode = 'laser';
+  game.player.stats.weaponTimer = 3;
+  game.enemies.push({
+    id: 'target',
+    kind: 'gunship',
+    x: game.player.x + 360,
+    y: game.player.y + 8,
+    r: 34,
+    hp: 30,
+    maxHp: 30,
+    score: 620,
+    speed: 0,
+    fireTimer: 10,
+    moveSeed: 0,
+  });
+
+  updateGame(game, {}, 1 / 30);
+
+  assert.ok(game.enemies[0].hp < 26);
+  assert.ok(game.laserBeams.length >= 1);
+  assert.ok(game.audioEvents.some((event) => event.type === 'laser'));
+});
+
+test('special weapon mode expires back to standard fire', () => {
+  const game = createGame(1280, 720);
+  game.spawnTimer = 999;
+  game.player.stats.weaponMode = 'laser';
+  game.player.stats.weaponTimer = 0.01;
+
+  updateGame(game, {}, 1 / 30);
+
+  assert.equal(game.player.stats.weaponMode, 'standard');
+  assert.equal(game.player.stats.weaponTimer, 0);
+});
+
+test('missile mode fires explosive shells that damage clustered enemies', () => {
+  const game = createGame(1280, 720);
+  game.spawnTimer = 999;
+  game.player.stats.weaponMode = 'missile';
+  game.player.stats.weaponTimer = 3;
+  game.player.fireTimer = 0.2;
+  game.enemies.push(
+    {
+      id: 'target-a',
+      kind: 'gunship',
+      x: game.player.x + 320,
+      y: game.player.y,
+      r: 34,
+      hp: 18,
+      maxHp: 18,
+      score: 620,
+      speed: 0,
+      fireTimer: 10,
+      moveSeed: 0,
+    },
+    {
+      id: 'target-b',
+      kind: 'striker',
+      x: game.player.x + 350,
+      y: game.player.y + 42,
+      r: 22,
+      hp: 12,
+      maxHp: 12,
+      score: 240,
+      speed: 0,
+      fireTimer: 10,
+      moveSeed: 0,
+    },
+  );
+
+  updateGame(game, {}, 0.24);
+
+  assert.ok(game.bullets.some((bullet) => bullet.explosiveRadius >= 120) || game.enemies.length < 2);
+
+  game.bullets.push({
+    x: game.player.x + 320,
+    y: game.player.y,
+    vx: 0,
+    vy: 0,
+    r: 12,
+    damage: 10,
+    color: '#ffd166',
+    explosiveRadius: 150,
+    explosiveDamage: 16,
+  });
+
+  updateGame(game, {}, 1 / 60);
+
+  assert.equal(game.enemies.length, 0);
+  assert.ok(game.audioEvents.some((event) => event.type === 'missile'));
+  assert.ok(game.screenParticles.length >= 80);
+});
+
 test('update loop caps transient entities under heavy arcade effects', () => {
   const game = createGame(1280, 720);
 

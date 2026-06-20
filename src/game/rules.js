@@ -3,10 +3,14 @@ export function createPlayerStats() {
     maxHp: 100,
     hp: 100,
     power: 0,
+    level: 1,
     spread: 1,
     fireInterval: 0.15,
     bombCharge: 0,
     speed: 440,
+    weaponMode: 'standard',
+    weaponTimer: 0,
+    weaponSfxTimer: 0,
   };
 }
 
@@ -44,8 +48,22 @@ export function applyKillReward(state, enemyScore) {
 
 export function collectPowerDrop(player, amount) {
   player.power = Math.min(3, player.power + amount);
+  player.level = getPlayerLevel(player.power);
   player.fireInterval = Math.max(0.075, 0.15 - player.power * 0.025);
   player.spread = Math.min(4, 1 + Math.floor(player.power));
+  return player;
+}
+
+export function getPlayerLevel(power) {
+  return Math.min(4, 1 + Math.floor(Math.max(0, power)));
+}
+
+export function activateSpecialWeapon(player, kind) {
+  if (kind !== 'laser' && kind !== 'missile') return player;
+
+  player.weaponMode = kind;
+  player.weaponTimer = kind === 'laser' ? 9 : 10;
+  player.weaponSfxTimer = 0;
   return player;
 }
 

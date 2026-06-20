@@ -117,6 +117,25 @@ export function createBeatAudio({ bpm = 174 } = {}) {
       return;
     }
 
+    if (event.type === 'weapon') {
+      schedulePowerChord(beatTime, [220, 329.63, 440], 0.18, 0.1 * intensity);
+      schedulePickScrape(beatTime, 0.09 * intensity);
+      return;
+    }
+
+    if (event.type === 'laser') {
+      schedulePickScrape(now + 0.004, 0.12 * intensity);
+      scheduleBlip(now + 0.006, 980, 0.06, 0.045 * intensity, 'sawtooth', metalBus);
+      return;
+    }
+
+    if (event.type === 'missile') {
+      scheduleKick(now + 0.004, true, 1.25 * intensity);
+      scheduleCrash(now + 0.01, 0.24 * intensity);
+      scheduleImpact(now + 0.006, 54, 0.42, 0.32 * intensity);
+      return;
+    }
+
     if (event.type === 'power' || event.type === 'charge' || event.type === 'heal') {
       const notes = event.type === 'heal' ? [329.63, 440] : [246.94, 329.63];
       schedulePowerChord(beatTime, notes, 0.13, 0.07);
