@@ -1,0 +1,54 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+import {
+  applyKillReward,
+  collectPowerDrop,
+  createPlayerStats,
+  getAutoFireShots,
+  getBossPhase,
+  updateCombo,
+} from '../src/game/rules.js';
+
+test('auto-fire emits repeated shots when the fire interval elapses', () => {
+  const stats = createPlayerStats();
+  const result = getAutoFireShots(0.37, stats.fireInterval, 0);
+
+  assert.equal(result.shots, 2);
+  assert.ok(result.nextTimer > 0);
+  assert.ok(result.nextTimer < stats.fireInterval);
+});
+
+test('combo decays when no kill lands before the timeout', () => {
+  const active = updateCombo({ value: 6, timer: 0.5 }, 0.25, false);
+  const expired = updateCombo({ value: 6, timer: 0.1 }, 0.25, false);
+
+  assert.deepEqual(active, { value: 6, timer: 0.25 });
+  assert.deepEqual(expired, { value: 0, timer: 0 });
+});
+
+test('kills add score through combo and refresh the combo timer', () => {
+  const state = applyKillReward({ score: 1000, combo: 4, comboTimer: 0.2, bombCharge: 0.2 }, 140);
+
+  assert.equal(state.combo, 5);
+  assert.equal(state.comboTimer, 2.4);
+  assert.equal(state.score, 1700);
+  assert.equal(state.bombCharge, 0.32);
+});
+
+test('power drops stack weapon intensity but stay capped', () => {
+  const player = createPlayerStats();
+  player.power = 2.75;
+
+  collectPowerDrop(player, 0.8);
+
+  assert.equal(player.power, 3);
+  assert.equal(player.fireInterval, 0.075);
+  assert.equal(player.spread, 4);
+});
+
+test('boss phase appears on cadence and scales after each cycle', () => {
+  assert.equal(getBossPhase(29.9), null);
+  assert.deepEqual(getBossPhase(30.1), { cycle: 1, hp: 900, score: 2800 });
+  assert.deepEqual(getBossPhase(91), { cycle: 3, hp: 1500, score: 4400 });
+});

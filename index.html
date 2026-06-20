@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Starline Valkyrie</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%234df8ff' d='M58 32 8 8l12 24L8 56z'/%3E%3Cpath fill='%23ff4fd8' d='M58 32 20 24l10 8-10 8z'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <main class="game-shell">
+      <canvas id="game" aria-label="Starline Valkyrie arcade shooter"></canvas>
+      <section class="hud" aria-live="polite">
+        <div class="brand">
+          <span class="brand-mark"></span>
+          <span>STARLINE VALKYRIE</span>
+        </div>
+        <div class="hud-metrics">
+          <div>
+            <span>SCORE</span>
+            <strong id="score">0</strong>
+          </div>
+          <div>
+            <span>COMBO</span>
+            <strong id="combo">0</strong>
+          </div>
+          <div>
+            <span>KILLS</span>
+            <strong id="kills">0</strong>
+          </div>
+        </div>
+        <div class="bars">
+          <label>
+            <span>HP</span>
+            <i><b id="hpBar"></b></i>
+          </label>
+          <label>
+            <span>BOMB</span>
+            <i><b id="bombBar"></b></i>
+          </label>
+        </div>
+      </section>
+      <section class="status" id="statusPanel" hidden>
+        <h1 id="statusTitle"></h1>
+        <p id="statusText"></p>
+        <button id="restartButton" type="button">RESTART</button>
+      </section>
+      <button class="bomb-button" id="bombButton" type="button" aria-label="Bomb">BOMB</button>
+    </main>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
